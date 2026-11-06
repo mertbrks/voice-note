@@ -1,6 +1,6 @@
 // node test.mjs
 import assert from 'node:assert/strict';
-import { fileName, toMarkdown, b64utf8, parseJSON, splitText, dur } from './lib.js';
+import { fileName, toMarkdown, b64utf8, parseJSON, splitText, dur, highlights, groupKey } from './lib.js';
 
 const n = { created: new Date(2026, 10, 6, 14, 5).getTime(), seconds: 125, title: 'Türev: zincir/kural?', tags: ['Ders', 'Hatırlatıcı'], summary: 'Özet.', bullets: ['a'], text: 'döküm' };
 assert.equal(fileName(n), '2026-11-06 1405 Türev zincirkural.md');
@@ -14,4 +14,13 @@ const long = 'Bir cümle. '.repeat(3000);
 const parts = splitText(long, 9000);
 assert.ok(parts.every(p => p.length <= 9001) && parts.join(' ').length >= long.trim().length - parts.length);
 assert.deepEqual(splitText('kısa', 9000), ['kısa']);
+const segs = [{ start: 0, end: 10, text: 'giriş' }, { start: 40, end: 50, text: 'önemli kısım' }, { start: 100, end: 110, text: 'son' }];
+assert.deepEqual(highlights([55], segs), [{ t: 55, text: 'önemli kısım' }]);
+assert.deepEqual(highlights([300], segs), []);
+assert.deepEqual(highlights(undefined, segs), []);
+assert.equal(groupKey('Ders', 'Fizik'), 'Ders · Fizik');
+assert.equal(groupKey('Fikir', 'Fizik'), 'Fikir');
+const md2 = toMarkdown({ ...n, course: 'Fizik', highlights: [{ t: 65, text: 'x' }] });
+assert.match(md2, /^ders: Fizik$/m);
+assert.match(md2, /- \*\*01:05\*\* x/);
 console.log('ok');
