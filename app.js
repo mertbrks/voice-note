@@ -1,4 +1,4 @@
-import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey } from './lib.js';
+import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey, isRemind, icsFor, gcalUrl } from './lib.js';
 
 const SEG_MS = 5 * 60 * 1000;          // 5 dk'lık parça: Groq'un 25 MB sınırının çok altında
 const STT_MODEL = 'whisper-large-v3-turbo';
@@ -127,6 +127,7 @@ Sadece şu JSON'u döndür:
 {"baslik": "en fazla 8 kelimelik başlık",
  "etiketler": ["1-3 etiket, YALNIZCA şunlardan: ${TAGS.join(', ')}"],
  "ders": "dersin adı (Matematik, Fizik…) yalnızca açıkça anlaşılıyorsa, yoksa boş metin",
+ "hatirlatma": "not bir hatırlatma içeriyor ve tarih/gün söylenmişse 'YYYY-MM-DDTHH:MM' (saat söylenmemişse 09:00); yoksa boş metin. Göreli ifadeleri (yarın, cuma) verilen bugünkü tarihe göre çevir",
  "ozet": "1-3 cümlelik özet",
  "maddeler": ["önemli noktalar; kısa notlarda boş dizi, uzun kayıtlarda en fazla 10 madde; kullanıcının işaretlediği bölümler mutlaka yer alsın"]}`;
 
@@ -135,11 +136,13 @@ async function analyze(text) {
     model: LLM_MODEL,
     reasoning_effort: 'low',
     response_format: { type: 'json_object' },
-    messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: text }],
+    messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: `Bugün: ${new Date().toLocaleString('tr-TR', { dateStyle: 'full', timeStyle: 'short' })}
+
+${text}` }],
   });
   const j = parseJSON(r.choices[0].message.content);
   const tags = [...new Set((j.etiketler || []).map(t => TAGS.find(x => x.toLocaleLowerCase('tr') === String(t).toLocaleLowerCase('tr')) || t))];
-  return { title: j.baslik, tags, course: (j.ders || '').trim(), summary: j.ozet || '', bullets: j.maddeler || [] };
+  return { title: j.baslik, tags, course: (j.ders || '').trim(), remind: isRemind(j.hatirlatma) ? j.hatirlatma : '', summary: j.ozet || '', bullets: j.maddeler || [] };
 }
 
 async function processNote(id) {
@@ -330,6 +333,9 @@ async function openNote(id) {
     <h2>${esc(n.title || LABEL[n.status])}</h2>
     ${n.tags?.length ? `<p class="tags">${n.tags.map(t => `<i>${esc(t)}</i>`).join('')}</p>` : ''}
     ${n.error ? `<p class="err">${esc(n.error)}</p>` : ''}
+    ${n.remind ? `<div class="remind"><b>⏰ ${new Date(n.remind).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</b>
+      <a class="btn" href="data:text/calendar;charset=utf-8,${encodeURIComponent(icsFor(n))}" download="hatirlatma.ics">Apple Takvim</a>
+      <a class="btn" href="${esc(gcalUrl(n))}" target="_blank" rel="noopener">Google Takvim</a></div>` : ''}
     ${n.summary ? `<blockquote>${esc(n.summary)}</blockquote>` : ''}
     ${n.bullets?.length ? `<ul>${n.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
     ${n.highlights?.length ? `<h3>İşaretli anlar</h3>${n.highlights.map(h => `<p class="mark"><b class="meta">${dur(h.t)}</b> ${esc(h.text)}</p>`).join('')}` : ''}
@@ -350,6 +356,7 @@ function editNote() {
     <label>Başlık <input id="e-title" value="${esc(n.title)}"></label>
     <label>Etiketler (virgülle) <input id="e-tags" value="${esc((n.tags || []).join(', '))}"></label>
     <label>Ders adı <input id="e-course" list="courses" value="${esc(n.course)}" placeholder="ör. Matematik"></label>
+    <label>Hatırlatma zamanı <input id="e-remind" type="datetime-local" value="${esc(n.remind)}"></label>
     <label>Özet <textarea id="e-summary" rows="3">${esc(n.summary)}</textarea></label>
     <label>Maddeler (her satır bir madde) <textarea id="e-bullets" rows="5">${esc((n.bullets || []).join('\n'))}</textarea></label>
     <label>Döküm <textarea id="e-text" rows="10">${esc(n.text)}</textarea></label>`;
@@ -360,6 +367,7 @@ function editNote() {
       title: v('e-title') || 'Not',
       tags: v('e-tags').split(',').map(s => s.trim()).filter(Boolean),
       course: v('e-course'),
+      remind: isRemind(v('e-remind')) ? v('e-remind') : '',
       summary: v('e-summary'),
       bullets: v('e-bullets').split('\n').map(s => s.trim()).filter(Boolean),
       text: v('e-text'),
