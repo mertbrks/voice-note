@@ -109,7 +109,6 @@ async function transcribe(blob) {
   const f = new FormData();
   f.append('file', blob, blob.type.includes('mp4') ? 'ses.mp4' : 'ses.webm');
   f.append('model', STT_MODEL);
-  f.append('language', 'tr');
   return (await groq('audio/transcriptions', f)).text.trim();
 }
 
@@ -209,6 +208,11 @@ async function render() {
   const waiting = notes.filter(n => n.status === 'hazir' && !n.synced).length;
   $('#sync').textContent = waiting ? `Sync (${waiting})` : 'Sync';
   if (!notes.length) return ($('#list').innerHTML = '<p class="empty">Henüz not yok. Dokun ve konuş.</p>');
+  const q = $('#q').value.trim().toLocaleLowerCase('tr');
+  if (q) {
+    const hit = notes.filter(n => [n.title, n.summary, n.text, ...(n.tags || [])].join(' ').toLocaleLowerCase('tr').includes(q));
+    return ($('#list').innerHTML = hit.length ? `<ul>${hit.map(item).join('')}</ul>` : '<p class="empty">Sonuç yok.</p>');
+  }
   // Birden çok etiketi olan not her kategorisinde görünür
   const groups = new Map([...TAGS, 'Diğer'].map(t => [t, []]));
   for (const n of notes) {
@@ -253,6 +257,7 @@ function openSettings(msg) {
 
 $('#rec').onclick = () => (document.body.classList.contains('rec') ? stopRec() : startRec());
 $('#sync').onclick = () => sync().catch(e => status(e.message));
+$('#q').oninput = render;
 $('#gear').onclick = () => openSettings();
 $('#list').addEventListener('toggle', () => localStorage.setItem('open', JSON.stringify([...document.querySelectorAll('#list details[open]')].map(d => d.dataset.tag))), true);
 $('#list').onclick = e => { const b = e.target.closest('.item'); if (b) openNote(b.dataset.id); };
