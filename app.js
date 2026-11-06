@@ -4,6 +4,7 @@ const SEG_MS = 5 * 60 * 1000;          // 5 dk'lık parça: Groq'un 25 MB sını
 const STT_MODEL = 'whisper-large-v3-turbo';
 const LLM_MODEL = 'openai/gpt-oss-20b';
 const API = 'https://api.groq.com/openai/v1/';
+const TAGS = ['Ders', 'Fikir', 'Kişisel', 'Hatırlatıcı', 'Proje', 'Toplantı']; // sabit liste: kategoriler dağılmasın
 const $ = s => document.querySelector(s);
 const cfg = k => localStorage.getItem(k) || '';
 
@@ -115,7 +116,7 @@ async function transcribe(blob) {
 const PROMPT = `Sen bir not asistanısın. Kullanıcının Türkçe sesli notunun dökümünü alırsın (ders kaydı, anlık fikir, hatırlatma olabilir).
 Sadece şu JSON'u döndür:
 {"baslik": "en fazla 8 kelimelik başlık",
- "etiketler": ["1-3 etiket: Ders, Fikir, Hatırlatıcı, Kişisel, Proje, Toplantı veya uygun başka tek kelime"],
+ "etiketler": ["1-3 etiket, YALNIZCA şunlardan: ${TAGS.join(', ')}"],
  "ozet": "1-3 cümlelik özet",
  "maddeler": ["önemli noktalar; kısa notlarda boş dizi, uzun kayıtlarda en fazla 10 madde"]}`;
 
@@ -127,7 +128,8 @@ async function analyze(text) {
     messages: [{ role: 'system', content: PROMPT }, { role: 'user', content: text }],
   });
   const j = parseJSON(r.choices[0].message.content);
-  return { title: j.baslik, tags: j.etiketler || [], summary: j.ozet || '', bullets: j.maddeler || [] };
+  const tags = [...new Set((j.etiketler || []).map(t => TAGS.find(x => x.toLocaleLowerCase('tr') === String(t).toLocaleLowerCase('tr')) || t))];
+  return { title: j.baslik, tags, summary: j.ozet || '', bullets: j.maddeler || [] };
 }
 
 async function processNote(id) {
@@ -195,16 +197,30 @@ function status(t) { $('#status').textContent = t; }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const LABEL = { kayit: 'kayıtta', islenecek: 'sırada', isleniyor: 'işleniyor…', hata: 'hata — dokun' };
 
-async function render() {
-  const notes = (await allNotes()).sort((a, b) => b.created - a.created);
-  const waiting = notes.filter(n => n.status === 'hazir' && !n.synced).length;
-  $('#sync').textContent = waiting ? `Sync (${waiting})` : 'Sync';
-  $('#list').innerHTML = notes.length ? notes.map(n => `
+const item = n => `
     <li><button class="item" data-id="${n.id}">
       <span class="meta">${stamp(n.created)} · ${dur(n.seconds || 0)}${n.synced ? ' · ✓' : ''}</span>
       <span class="title">${esc(n.title || LABEL[n.status] || 'Not')}</span>
       ${n.tags?.length ? `<span class="tags">${n.tags.map(t => `<i>${esc(t)}</i>`).join('')}</span>` : ''}
-    </button></li>`).join('') : '<li class="empty">Henüz not yok. Dokun ve konuş.</li>';
+    </button></li>`;
+
+async function render() {
+  const notes = (await allNotes()).sort((a, b) => b.created - a.created);
+  const waiting = notes.filter(n => n.status === 'hazir' && !n.synced).length;
+  $('#sync').textContent = waiting ? `Sync (${waiting})` : 'Sync';
+  if (!notes.length) return ($('#list').innerHTML = '<p class="empty">Henüz not yok. Dokun ve konuş.</p>');
+  // Birden çok etiketi olan not her kategorisinde görünür
+  const groups = new Map([...TAGS, 'Diğer'].map(t => [t, []]));
+  for (const n of notes) {
+    const ts = n.status === 'hazir' ? (n.tags?.length ? n.tags : ['Diğer']) : ['İşleniyor'];
+    for (const t of ts) (groups.get(t) || groups.set(t, []).get(t)).push(n);
+  }
+  const open = JSON.parse(localStorage.getItem('open') || '[]');
+  $('#list').innerHTML = [...groups].filter(([, ns]) => ns.length).map(([t, ns]) => `
+    <details data-tag="${esc(t)}" ${open.includes(t) ? 'open' : ''}>
+      <summary><span>${esc(t)}</span><span class="meta">${ns.length}</span></summary>
+      <ul>${ns.map(item).join('')}</ul>
+    </details>`).join('');
 }
 
 let current;
@@ -238,6 +254,7 @@ function openSettings(msg) {
 $('#rec').onclick = () => (document.body.classList.contains('rec') ? stopRec() : startRec());
 $('#sync').onclick = () => sync().catch(e => status(e.message));
 $('#gear').onclick = () => openSettings();
+$('#list').addEventListener('toggle', () => localStorage.setItem('open', JSON.stringify([...document.querySelectorAll('#list details[open]')].map(d => d.dataset.tag))), true);
 $('#list').onclick = e => { const b = e.target.closest('.item'); if (b) openNote(b.dataset.id); };
 $('#save').onclick = () => { for (const k of ['groqKey', 'ghToken', 'ghRepo']) localStorage.setItem(k, $('#' + k).value.trim()); };
 $('#close').onclick = () => $('#detail').close();
