@@ -1,6 +1,6 @@
 // node test.mjs
 import assert from 'node:assert/strict';
-import { fileName, toMarkdown, b64utf8, parseJSON, splitText, dur, highlights, groupKey, isRemind, icsFor, gcalUrl } from './lib.js';
+import { fileName, toMarkdown, b64utf8, parseJSON, splitText, dur, highlights, groupKey, isRemind, icsFor, gcalUrl, isTrEn } from './lib.js';
 
 const n = { created: new Date(2026, 10, 6, 14, 5).getTime(), seconds: 125, title: 'Türev: zincir/kural?', tags: ['Ders', 'Hatırlatıcı'], summary: 'Özet.', bullets: ['a'], text: 'döküm' };
 assert.equal(fileName(n), '2026-11-06 1405 Türev zincirkural.md');
@@ -30,4 +30,5 @@ assert.match(ics, /DTSTART:20261107T100000\r\nDTEND:20261107T103000/);
 assert.match(ics, /SUMMARY:Sınav\\; matematik/);
 assert.match(gcalUrl(r), /dates=20261107T100000%2F20261107T103000/);
 assert.match(toMarkdown({ ...n, remind: r.remind }), /^hatirlatma: 2026-11-07 10:00$/m);
+assert.ok(isTrEn('Turkish') && isTrEn('en') && !isTrEn('dutch') && !isTrEn(undefined));
 console.log('ok');

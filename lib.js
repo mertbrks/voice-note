@@ -99,3 +99,6 @@ export function icsFor(n) {
 export const gcalUrl = n => 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
   action: 'TEMPLATE', text: n.title || 'Hatırlatma', dates: `${cal(n.remind)}/${cal(n.remind, 30)}`, details: n.summary || n.text || '',
 });
+
+// Whisper dili bazen 'tr', bazen 'turkish' diye döndürür; boşsa algılanmamış say
+export const isTrEn = l => ['tr', 'turkish', 'en', 'english'].includes(String(l || '').toLowerCase());

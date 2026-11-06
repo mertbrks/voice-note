@@ -1,4 +1,4 @@
-import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey, isRemind, icsFor, gcalUrl } from './lib.js';
+import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey, isRemind, icsFor, gcalUrl, isTrEn } from './lib.js';
 
 const SEG_MS = 5 * 60 * 1000;          // 5 dk'lık parça: Groq'un 25 MB sınırının çok altında
 const STT_MODEL = 'whisper-large-v3-turbo';
@@ -110,12 +110,15 @@ async function groq(path, body) {
 }
 
 // Zaman damgalı döküm: işaretlenen anların metnini bulmak için
-async function transcribe(blob, offset) {
+async function transcribe(blob, offset, language) {
   const f = new FormData();
   f.append('file', blob, blob.type.includes('mp4') ? 'ses.mp4' : 'ses.webm');
   f.append('model', STT_MODEL);
   f.append('response_format', 'verbose_json');
+  if (language) f.append('language', language);
   const r = await groq('audio/transcriptions', f);
+  // Yalnızca Türkçe/İngilizce: başka dil sanırsa Türkçe olarak yeniden çevir
+  if (!language && !isTrEn(r.language)) return transcribe(blob, offset, 'tr');
   return {
     text: r.text.trim(),
     segs: (r.segments || []).map(g => ({ start: g.start + offset, end: g.end + offset, text: g.text.trim() })),
