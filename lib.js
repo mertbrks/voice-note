@@ -22,6 +22,7 @@ export function toMarkdown(n) {
     `tarih: ${stamp(n.created)}`,
     `sure: ${dur(n.seconds || 0)}`,
     `tags: [${(n.tags || []).map(tag).join(', ')}]`,
+    ...(n.course ? [`ders: ${n.course}`] : []),
     '---',
     `# ${n.title || 'Not'}`,
     '',
@@ -29,6 +30,7 @@ export function toMarkdown(n) {
   if (n.summary) md.push(`> ${n.summary}`, '');
   for (const b of n.bullets || []) md.push(`- ${b}`);
   if (n.bullets?.length) md.push('');
+  if (n.highlights?.length) md.push('## İşaretli anlar', '', ...n.highlights.map(h => `- **${dur(h.t)}** ${h.text}`), '');
   md.push('## Döküm', '', n.text || '');
   return md.join('\n');
 }
@@ -60,3 +62,14 @@ export function splitText(text, max) {
   if (rest.trim()) out.push(rest.trim());
   return out;
 }
+
+// İşaret anının 20 sn öncesi ile 5 sn sonrası arasındaki döküm parçası
+export function highlights(marks, segs) {
+  return (marks || []).map(t => ({
+    t,
+    text: segs.filter(g => g.end >= t - 20 && g.start <= t + 5).map(g => g.text).join(' ').trim(),
+  })).filter(h => h.text);
+}
+
+// Ders etiketli notlar ders adına göre ayrı başlıkta toplanır
+export const groupKey = (tag, course) => (tag === 'Ders' && course ? `Ders · ${course}` : tag);

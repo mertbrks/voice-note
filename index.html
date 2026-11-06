@@ -79,23 +79,42 @@
   input { font-size: 15px; padding: 10px; border: 2px solid var(--ink); background: var(--field); color: var(--ink); width: 100%; }
   .hint { font-size: 13px; color: var(--mute); }
   .hint a { color: var(--ink); }
+  textarea { font: 15px/1.5 Georgia, serif; padding: 10px; border: 2px solid var(--ink); background: var(--field); color: var(--ink); width: 100%; resize: vertical; }
+  .erow { display: flex; justify-content: space-between; align-items: center; }
+  .mark { border-left: 4px double var(--ink); padding-left: 10px; }
+  #mark { display: none; }
+  .rec #mark { display: block; }
+  .item.on { background: var(--ink); color: var(--paper); }
+  .item.on .meta { color: var(--paper); }
+  .item.on .tags i { border-color: var(--paper); }
+  #selbar { display: none; position: fixed; left: 0; right: 0; bottom: 0; gap: 8px; align-items: center; justify-content: space-between;
+    padding: 12px 20px calc(env(safe-area-inset-bottom) + 12px); background: var(--paper); border-top: 3px solid var(--ink); }
+  .sel #selbar { display: flex; }
+  .sel { padding-bottom: 90px; }
+  .sel #selbtn { background: var(--ink); color: var(--paper); }
+  fieldset { border: 2px solid var(--ink); padding: 12px; display: grid; gap: 10px; }
+  legend { font: 12px ui-monospace, monospace; letter-spacing: .2em; text-transform: uppercase; padding: 0 6px; }
 </style>
 </head>
 <body>
-  <header><b>NOT</b><nav><button id="sync">Sync</button><button id="gear" aria-label="Ayarlar">⚙</button></nav></header>
+  <header><b>NOT</b><nav><button id="selbtn">Seç</button><button id="sync">Sync</button><button id="gear" aria-label="Ayarlar">⚙</button></nav></header>
 
   <main class="stage">
     <button id="rec" aria-label="Kaydı başlat / durdur"><span class="mono">KAYIT</span></button>
     <div id="status" role="status" aria-live="polite"></div>
+    <button id="mark" aria-label="Bu anı önemli diye işaretle">İşaret koy</button>
   </main>
 
   <input id="q" type="search" placeholder="Notlarda ara" aria-label="Notlarda ara">
   <div id="list"></div>
+  <datalist id="courses"></datalist>
+  <div id="selbar"><span class="mono">0 seçili</span><button id="selall">Tümü</button><button id="seldel">Sil</button><button id="selcancel">Vazgeç</button></div>
 
   <dialog id="detail">
     <div class="dbody" id="detail-body"></div>
     <div class="bar">
       <button id="close">Kapat</button>
+      <button id="edit">Düzenle</button>
       <button id="share">Paylaş</button>
       <button id="retry">Tekrar dene</button>
       <button id="del" class="push">Sil</button>
@@ -113,7 +132,16 @@
         <input id="ghToken" type="password" autocomplete="off" placeholder="github_pat_…"></label>
       <label>Not deposu
         <input id="ghRepo" autocomplete="off" placeholder="kullanici/voice-notes"></label>
+      <fieldset><legend>Notion (isteğe bağlı)</legend>
+        <label>Notion anahtarı <input id="notionToken" type="password" autocomplete="off" placeholder="ntn_…"></label>
+        <label>Veritabanı kimliği <input id="notionDb" autocomplete="off" placeholder="32 karakterlik kimlik"></label>
+        <label>Aracı adresi (Cloudflare Worker) <input id="notionProxy" autocomplete="off" placeholder="https://…workers.dev"></label>
+      </fieldset>
       <p class="hint">Anahtarlar yalnızca bu cihazda saklanır.</p>
+      <fieldset><legend>Yedek</legend>
+        <button id="export">Tüm notları ve sesleri indir</button>
+        <label>Yedekten geri yükle <input id="import" type="file" accept="application/json,.json"></label>
+      </fieldset>
       <div class="bar" style="padding:12px 0 0"><button id="save">Kaydet</button><button value="cancel" formnovalidate>Vazgeç</button></div>
     </form>
   </dialog>
