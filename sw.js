@@ -1,5 +1,5 @@
 // Uygulama kabuğunu önbelleğe al: internet yokken de açılsın ve kayıt alsın
-const V = 'not-v5';
+const V = 'not-v6';
 const FILES = ['./', 'index.html', 'app.js', 'lib.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

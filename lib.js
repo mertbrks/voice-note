@@ -23,6 +23,7 @@ export function toMarkdown(n) {
     `sure: ${dur(n.seconds || 0)}`,
     `tags: [${(n.tags || []).map(tag).join(', ')}]`,
     ...(n.course ? [`ders: ${n.course}`] : []),
+    ...(n.remind ? [`hatirlatma: ${n.remind.replace('T', ' ')}`] : []),
     '---',
     `# ${n.title || 'Not'}`,
     '',
@@ -73,3 +74,28 @@ export function highlights(marks, segs) {
 
 // Ders etiketli notlar ders adına göre ayrı başlıkta toplanır
 export const groupKey = (tag, course) => (tag === 'Ders' && course ? `Ders · ${course}` : tag);
+
+// ---------- Takvim (hatırlatıcı) ----------
+// remind: 'YYYY-MM-DDTHH:MM' yerel saat; etkinlik 30 dk, bildirim tam saatinde
+export const isRemind = s => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s || '');
+const cal = (s, addMin = 0) => {
+  const d = new Date(s);
+  d.setMinutes(d.getMinutes() + addMin);
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+};
+const icsText = s => String(s || '').replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
+
+export function icsFor(n) {
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sesli Not//TR', 'BEGIN:VEVENT',
+    `UID:${n.id}@sesli-not`, `DTSTAMP:${cal(new Date().toISOString().slice(0, 16))}Z`,
+    `DTSTART:${cal(n.remind)}`, `DTEND:${cal(n.remind, 30)}`,
+    `SUMMARY:${icsText(n.title)}`, `DESCRIPTION:${icsText(n.summary || n.text)}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(n.title)}`, 'TRIGGER:PT0M', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+export const gcalUrl = n => 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
+  action: 'TEMPLATE', text: n.title || 'Hatırlatma', dates: `${cal(n.remind)}/${cal(n.remind, 30)}`, details: n.summary || n.text || '',
+});
