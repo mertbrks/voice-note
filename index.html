@@ -43,8 +43,15 @@
   .rec #rec span { font-size: 0; }
   .rec #rec span::after { content: "DUR"; font-size: 15px; }
 
-  #list { list-style: none; padding: 0; border-top: 2px solid var(--ink); }
-  #list li { border-bottom: 1px solid var(--ink); }
+  #list { border-top: 2px solid var(--ink); }
+  #list details { border-bottom: 2px solid var(--ink); }
+  #list summary { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 2px; cursor: pointer; list-style: none;
+    font: 14px ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .2em; text-transform: uppercase; }
+  #list summary::-webkit-details-marker { display: none; }
+  #list summary span:first-child::before { content: "+ "; }
+  #list details[open] summary span:first-child::before { content: "− "; }
+  #list ul { list-style: none; padding: 0 0 6px 14px; }
+  #list li { border-top: 1px solid var(--ink); }
   .item { all: unset; display: grid; gap: 2px; width: 100%; padding: 14px 2px; cursor: pointer; }
   .item:focus-visible { outline: 3px solid var(--ink); }
   .meta { font-size: 12px; color: var(--mute); }
@@ -79,7 +86,7 @@
     <div id="status" role="status" aria-live="polite"></div>
   </main>
 
-  <ul id="list"></ul>
+  <div id="list"></div>
 
   <dialog id="detail">
     <div class="dbody" id="detail-body"></div>
