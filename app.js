@@ -1,4 +1,4 @@
-import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey, isRemind, icsFor, gcalUrl, isTrEn } from './lib.js';
+import { stamp, dur, fileName, toMarkdown, b64utf8, parseJSON, splitText, highlights, groupKey, isRemind, icsFor, gcalUrl, isTrEn, fromMarkdown, isNoteFile } from './lib.js';
 
 const SEG_MS = 5 * 60 * 1000;          // 5 dk'lık parça: Groq'un 25 MB sınırının çok altında
 const STT_MODEL = 'whisper-large-v3-turbo';
@@ -33,7 +33,11 @@ const getNote = id => tx('notes', 'readonly', s => s.get(id));
 const allNotes = () => tx('notes', 'readonly', s => s.getAll());
 const chunksOf = id => tx('chunks', 'readonly', s => s.index('noteId').getAll(id));
 const allChunks = () => tx('chunks', 'readonly', s => s.getAll());
+// Bu cihazda silinen notlar bir sonraki senkronda GitHub'dan geri gelmesin (Obsidian'daki dosyaya dokunulmaz)
+const gone = () => JSON.parse(localStorage.getItem('silinen') || '[]');
 async function deleteNote(id) {
+  const n = await getNote(id);
+  if (n?.path) localStorage.setItem('silinen', JSON.stringify([...gone(), n.path]));
   await tx('chunks', 'readwrite', s => {
     s.index('noteId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = e => {
       const c = e.target.result;
@@ -208,7 +212,31 @@ async function ghPut(n) {
   const r = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ message: 'Not: ' + n.title, content: b64utf8(toMarkdown(n)), sha }) });
   if (!r.ok) throw new Error(`GitHub hatası ${r.status}. Anahtarı/depoyu kontrol et.`);
   n.path = path;
+  n.sha = (await r.json()).content.sha;
   n.synced = true;
+}
+
+// Diğer cihazın gönderdiği notları al: yeni dosya eklenir, değişen dosya güncellenir.
+// Bu cihazda gönderilmemiş düzenlemesi olan nota dokunulmaz (önce o gönderilir). Ses kayıtları gelmez, yalnızca metin.
+async function ghPull() {
+  const headers = { Authorization: 'Bearer ' + cfg('ghToken'), Accept: 'application/vnd.github+json' };
+  // shortcut: contents listesi en fazla 1000 dosya döner; not sayısı bunu aşarsa git/trees API'ye geç
+  const r = await fetch(`https://api.github.com/repos/${cfg('ghRepo')}/contents/`, { headers, cache: 'no-store' });
+  if (!r.ok) throw new Error(`GitHub hatası ${r.status}. Anahtarı/depoyu kontrol et.`);
+  const byPath = new Map((await allNotes()).map(n => [n.path || fileName(n), n]));
+  const skip = new Set(gone());
+  let got = 0;
+  for (const f of (await r.json()).filter(f => f.type === 'file' && isNoteFile(f.name) && !skip.has(f.name))) {
+    const old = byPath.get(f.name);
+    if (old && (old.sha === f.sha || !old.synced)) continue;
+    if (old && !old.sha) { old.sha = f.sha; await putNote(old); continue; } // bu sürümden önce gönderilmiş: aynı kabul et
+    const raw = await fetch(f.url, { headers: { ...headers, Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' });
+    if (!raw.ok) continue;
+    const md = fromMarkdown(await raw.text(), TAGS);
+    await putNote({ ...old, ...md, created: md.created || Date.now(), id: old?.id || 'gh:' + f.name, path: f.name, sha: f.sha, synced: true, status: 'hazir' });
+    got++;
+  }
+  return got;
 }
 
 let notionSchema;
@@ -247,14 +275,14 @@ async function notionPut(n) {
 async function sync() {
   if (!cfg('ghToken') && !cfg('notionToken')) return openSettings('Sync için GitHub ya da Notion bilgilerini gir.');
   const todo = (await allNotes()).filter(n => n.status === 'hazir' && (needsGh(n) || needsNotion(n)));
-  if (!todo.length) return status('Gönderilecek yeni not yok.');
   for (const [i, n] of todo.entries()) {
     status(`Gönderiliyor ${i + 1}/${todo.length}`);
     if (needsGh(n)) await ghPut(n);
     if (needsNotion(n)) await notionPut(n);
     await putNote(n);
   }
-  status(`${todo.length} not gönderildi.`);
+  const got = cfg('ghToken') && cfg('ghRepo') ? await ghPull() : 0;
+  status([todo.length && `${todo.length} not gönderildi`, got && `${got} not alındı`].filter(Boolean).join(', ') || 'Her şey güncel.');
   render();
 }
 
@@ -437,6 +465,8 @@ $('#del').onclick = async () => {
 // Açılışta: yarım kalan kayıtları ve işlenmemiş notları işle
 (async () => {
   if (cfg('groqKey')) for (const n of await allNotes()) if (['kayit', 'islenecek', 'isleniyor'].includes(n.status)) await processNote(n.id);
+  // açılışta diğer cihazın notlarını sessizce al
+  if (cfg('ghToken') && cfg('ghRepo')) ghPull().then(got => { if (got) { status(`${got} not alındı.`); render(); } }).catch(() => {});
 })();
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

@@ -102,3 +102,41 @@ export const gcalUrl = n => 'https://calendar.google.com/calendar/render?' + new
 
 // Whisper dili bazen 'tr', bazen 'turkish' diye döndürür; boşsa algılanmamış say
 export const isTrEn = l => ['tr', 'turkish', 'en', 'english'].includes(String(l || '').toLowerCase());
+
+// ---------- Senkron: GitHub'daki .md'den notu geri kur (toMarkdown'ın tersi) ----------
+export const isNoteFile = name => /^\d{4}-\d{2}-\d{2} \d{4} .*\.md$/.test(name);
+
+export function fromMarkdown(md, tagList = []) {
+  const lines = md.replace(/\r/g, '').split('\n');
+  const n = { tags: [], bullets: [], highlights: [], summary: '', course: '', remind: '', text: '' };
+  let i = 0;
+  if (lines[0] === '---') {
+    for (i = 1; i < lines.length && lines[i] !== '---'; i++) {
+      const [, k, v] = lines[i].match(/^(\w+):\s*(.*)$/) || [];
+      if (k === 'tarih') n.created = new Date(v.replace(' ', 'T')).getTime();
+      else if (k === 'sure') { const [m, s] = v.split(':').map(Number); n.seconds = m * 60 + s; }
+      else if (k === 'tags') n.tags = v.replace(/^\[|\]$/g, '').split(',').map(t => t.trim()).filter(Boolean)
+        // toMarkdown küçük harf + tire yapıyor; sabit listedeki asıl adı geri bul
+        .map(t => tagList.find(x => x.toLocaleLowerCase('tr').replace(/\s+/g, '-') === t) || t);
+      else if (k === 'ders') n.course = v;
+      else if (k === 'hatirlatma') n.remind = v.replace(' ', 'T');
+    }
+    i++;
+  }
+  let sec = 'head';
+  for (; i < lines.length; i++) {
+    const l = lines[i];
+    if (sec === 'dokum') { n.text += (n.text ? '\n' : '') + l; continue; }
+    if (l.startsWith('# ') && !n.title) n.title = l.slice(2);
+    else if (l === '## Döküm') sec = 'dokum';
+    else if (l === '## İşaretli anlar') sec = 'isaret';
+    else if (l.startsWith('> ')) n.summary = l.slice(2);
+    else if (l.startsWith('- ') && sec === 'isaret') {
+      const [, m, s, t] = l.match(/^- \*\*(\d+):(\d+)\*\* (.*)$/) || [];
+      if (t) n.highlights.push({ t: +m * 60 + +s, text: t });
+    } else if (l.startsWith('- ')) n.bullets.push(l.slice(2));
+  }
+  n.text = n.text.replace(/^\n+/, '');
+  n.title ||= 'Not';
+  return n;
+}

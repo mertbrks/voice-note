@@ -32,3 +32,15 @@ assert.match(gcalUrl(r), /dates=20261107T100000%2F20261107T103000/);
 assert.match(toMarkdown({ ...n, remind: r.remind }), /^hatirlatma: 2026-11-07 10:00$/m);
 assert.ok(isTrEn('Turkish') && isTrEn('en') && !isTrEn('dutch') && !isTrEn(undefined));
 console.log('ok');
+
+// Senkron: md -> not geri dönüşümü
+import { fromMarkdown, isNoteFile } from './lib.js';
+{
+  const full = { ...n, course: 'Matematik', remind: '2026-11-12T09:30', highlights: [{ t: 65, text: 'önemli' }], text: 'satır 1\n\nsatır 2' };
+  const back = fromMarkdown(toMarkdown(full), ['Ders', 'Hatırlatıcı']);
+  for (const k of ['created', 'seconds', 'title', 'tags', 'summary', 'bullets', 'course', 'remind', 'highlights', 'text']) assert.deepEqual(back[k], full[k], k);
+  assert.equal(fromMarkdown(toMarkdown(full).replace(/\n/g, '\r\n')).text, full.text);
+  assert.ok(isNoteFile('2026-11-09 1247 Microsoft data programına göz at.md'));
+  assert.ok(!isNoteFile('README.md'));
+}
+console.log('senkron testi ok');
