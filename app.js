@@ -331,7 +331,7 @@ const item = n => `
 async function render() {
   const notes = (await allNotes()).sort((a, b) => b.created - a.created);
   const waiting = notes.filter(n => n.status === 'hazir' && (needsGh(n) || needsNotion(n))).length;
-  $('#sync').textContent = waiting ? `Sync (${waiting})` : 'Sync';
+  waiting ? ($('#sync').dataset.n = waiting) : delete $('#sync').dataset.n;
   $('#courses').innerHTML = [...new Set(notes.map(n => n.course).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
   $('#selbar span').textContent = `${selected.size} seçili`;
   if (!notes.length) return ($('#list').innerHTML = '<p class="empty">Henüz not yok. Dokun ve konuş.</p>');
@@ -424,7 +424,7 @@ function setSelecting(on) {
 
 $('#rec').onclick = () => (document.body.classList.contains('rec') ? stopRec() : startRec());
 $('#mark').onclick = () => { marks.push((Date.now() - t0) / 1000); $('#mark').textContent = `İşaret koy (${marks.length})`; };
-$('#sync').onclick = () => sync().catch(e => { status(e.message); render(); });
+$('#sync').onclick = () => { $('#sync').classList.add('busy'); sync().catch(e => { status(e.message); render(); }).finally(() => $('#sync').classList.remove('busy')); };
 $('#q').oninput = render;
 $('#gear').onclick = () => openSettings();
 $('#selbtn').onclick = () => setSelecting(!selecting());

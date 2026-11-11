@@ -27,24 +27,32 @@
   .mono, .meta, header, #status, button, input, .tags i { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
   header b { font-size: 15px; letter-spacing: .3em; }
-  header nav { display: flex; gap: 8px; }
-  button { background: none; color: var(--ink); border: 2px solid var(--ink); font-size: 14px; padding: 8px 12px; cursor: pointer; }
+  header nav { display: flex; gap: 2px; margin-right: -10px; }
+  [hidden] { display: none !important; }
+  /* yazılı tuşlar: ince hap; simge tuşları: çerçevesiz, 44px dokunma alanı */
+  button { background: none; color: var(--ink); border: 1px solid var(--ink); border-radius: 99px; font-size: 13px; letter-spacing: .04em; padding: 8px 16px; cursor: pointer; }
   button:active { background: var(--ink); color: var(--paper); }
+  .ic { position: relative; width: 44px; height: 44px; padding: 0; border: 0; display: grid; place-items: center; color: var(--ink); }
+  .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .ic:active { background: none; opacity: .45; }
+  #sync[data-n]::after { content: attr(data-n); position: absolute; top: 3px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 99px;
+    background: var(--ink); color: var(--paper); font-size: 10px; line-height: 15px; text-align: center; box-shadow: 0 0 0 2px var(--paper); }
+  .busy svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ghost { border-color: transparent; color: var(--mute); }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   .stage { display: grid; place-items: center; gap: 18px; padding: 48px 0 36px; }
   #rec {
-    width: min(62vw, 240px); aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--ink);
+    width: min(56vw, 210px); aspect-ratio: 1; border-radius: 50%; border: 1.5px solid var(--ink); padding: 0;
     display: grid; place-items: center; font-size: 15px; letter-spacing: .25em;
   }
   #rec::before { content: ""; width: 34%; aspect-ratio: 1; border-radius: 50%; background: var(--ink); grid-area: 1/1; }
-  #rec span { grid-area: 1/1; margin-top: 62%; }
+  #rec span { display: none; }
   .rec #rec { background: var(--ink); color: var(--paper); }
   .rec #rec::before { background: var(--paper); border-radius: 4px; width: 26%; }
   #status { min-height: 1.5em; font-size: 22px; letter-spacing: .1em; text-align: center; }
   .rec #status { font-size: 34px; }
-  .rec #rec span { font-size: 0; }
-  .rec #rec span::after { content: "DUR"; font-size: 15px; }
 
   #list { border-top: 2px solid var(--ink); }
   #list details { border-bottom: 2px solid var(--ink); }
@@ -73,16 +81,16 @@
   .text { white-space: pre-wrap; }
   .err { border: 2px dashed var(--ink); padding: 8px; font-size: 14px; }
   audio { width: 100%; }
-  .bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 2px solid var(--ink); }
+  .bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 10px; border-top: 1px solid var(--ink); }
   .bar .push { margin-left: auto; }
   label { display: grid; gap: 4px; font-size: 13px; }
-  input { font-size: 15px; padding: 10px; border: 2px solid var(--ink); background: var(--field); color: var(--ink); width: 100%; }
+  input { font-size: 15px; padding: 10px; border: 1px solid var(--ink); background: var(--field); color: var(--ink); width: 100%; }
   .hint { font-size: 13px; color: var(--mute); }
   .hint a { color: var(--ink); }
   textarea { font: 15px/1.5 Georgia, serif; padding: 10px; border: 2px solid var(--ink); background: var(--field); color: var(--ink); width: 100%; resize: vertical; }
   .remind { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border: 2px solid var(--ink); padding: 10px; }
   .remind b { width: 100%; font-family: ui-monospace, monospace; font-size: 14px; }
-  .btn { border: 2px solid var(--ink); padding: 6px 10px; color: var(--ink); text-decoration: none; font: 13px ui-monospace, monospace; }
+  .btn { border: 1px solid var(--ink); border-radius: 99px; padding: 6px 14px; color: var(--ink); text-decoration: none; font: 13px ui-monospace, monospace; }
   .erow { display: flex; justify-content: space-between; align-items: center; }
   .mark { border-left: 4px double var(--ink); padding-left: 10px; }
   #mark { display: none; }
@@ -94,13 +102,13 @@
     padding: 12px 20px calc(env(safe-area-inset-bottom) + 12px); background: var(--paper); border-top: 3px solid var(--ink); }
   .sel #selbar { display: flex; }
   .sel { padding-bottom: 90px; }
-  .sel #selbtn { background: var(--ink); color: var(--paper); }
+  .sel #selbtn { background: var(--ink); color: var(--paper); border-radius: 50%; }
   fieldset { border: 2px solid var(--ink); padding: 12px; display: grid; gap: 10px; }
   legend { font: 12px ui-monospace, monospace; letter-spacing: .2em; text-transform: uppercase; padding: 0 6px; }
 </style>
 </head>
 <body>
-  <header><b>NOT</b><nav><button id="selbtn">Seç</button><button id="sync">Sync</button><button id="gear" aria-label="Ayarlar">⚙</button></nav></header>
+  <header><b>NOT</b><nav><button class="ic" id="selbtn" aria-label="Seç" title="Seç"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg></button><button class="ic" id="sync" aria-label="Senkronla" title="Senkronla"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 9A8 8 0 0 0 5 7.5M4.5 15A8 8 0 0 0 19 16.5"/><path d="M5 3.5v4h4M19 20.5v-4h-4"/></svg></button><button class="ic" id="gear" aria-label="Ayarlar" title="Ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button></nav></header>
 
   <main class="stage">
     <button id="rec" aria-label="Kaydı başlat / durdur"><span class="mono">KAYIT</span></button>
@@ -111,16 +119,16 @@
   <input id="q" type="search" placeholder="Notlarda ara" aria-label="Notlarda ara">
   <div id="list"></div>
   <datalist id="courses"></datalist>
-  <div id="selbar"><span class="mono">0 seçili</span><button id="selall">Tümü</button><button id="seldel">Sil</button><button id="selcancel">Vazgeç</button></div>
+  <div id="selbar"><span class="mono">0 seçili</span><button id="selall" class="ghost">Tümü</button><button id="selcancel" class="ghost">Vazgeç</button><button id="seldel">Sil</button></div>
 
   <dialog id="detail">
     <div class="dbody" id="detail-body"></div>
     <div class="bar">
-      <button id="close">Kapat</button>
-      <button id="edit">Düzenle</button>
-      <button id="share">Paylaş</button>
-      <button id="retry">Tekrar dene</button>
-      <button id="del" class="push">Sil</button>
+      <button class="ic" id="close" aria-label="Kapat" title="Kapat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button class="ic push" id="edit" aria-label="Düzenle" title="Düzenle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></button>
+      <button class="ic" id="share" aria-label="Paylaş" title="Paylaş"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg></button>
+      <button class="ic" id="retry" aria-label="Tekrar dene" title="Tekrar dene"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5"/><path d="M4 4v4.5h4.5"/></svg></button>
+      <button class="ic" id="del" aria-label="Sil" title="Sil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></svg></button>
     </div>
   </dialog>
 
